@@ -65,8 +65,22 @@ local ChaseState = {
 			context.lastTargetTime = os.clock()
 		end
 
-		-- Native Humanoid Pursuit Movement
-		humanoid:MoveTo(targetHrp.Position)
+		-- Throttled Pursuit Movement with Target Displacement Thresholding
+		local now = os.clock()
+		if not context.lastMoveToTime or (now - context.lastMoveToTime) >= 0.15 then
+			context.lastMoveToTime = now
+
+			local threshold = context.displacementThreshold or 6.0
+			local targetPos = targetHrp.Position
+			local lastPos = context.lastPathTargetPos
+
+			local displacement = if lastPos then (targetPos - lastPos).Magnitude else math.huge
+
+			if displacement >= threshold then
+				context.lastPathTargetPos = targetPos
+				humanoid:MoveTo(targetPos)
+			end
+		end
 
 		return nil
 	end,

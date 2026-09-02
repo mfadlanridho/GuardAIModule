@@ -17,11 +17,16 @@ export type GuardAIInstance = Types.GuardAIInstance
 
 -- Dependency Resolution
 local function resolvePackage(packageName: string): ModuleScript?
+	local submodulesFolder = ReplicatedStorage:FindFirstChild("Submodules")
+	if submodulesFolder and submodulesFolder:FindFirstChild(packageName) then
+		return submodulesFolder:FindFirstChild(packageName) :: ModuleScript?
+	end
+
 	local packagesFolder = ReplicatedStorage:FindFirstChild("Packages") or script.Parent
 	return packagesFolder:FindFirstChild(packageName) :: ModuleScript?
 end
 
-local stateMachineScript = resolvePackage("StateMachineModule") or ReplicatedStorage:WaitForChild("Packages"):WaitForChild("StateMachineModule")
+local stateMachineScript = resolvePackage("StateMachineModule") or (ReplicatedStorage:FindFirstChild("Submodules") and ReplicatedStorage.Submodules:FindFirstChild("StateMachineModule")) or ReplicatedStorage:WaitForChild("Packages"):WaitForChild("StateMachineModule")
 local StateMachine = require(stateMachineScript :: ModuleScript)
 
 local loggerScript = resolvePackage("LoggerModule")
@@ -32,6 +37,8 @@ local IdleState = require(StatesFolder:WaitForChild("IdleState") :: ModuleScript
 local PatrolState = require(StatesFolder:WaitForChild("PatrolState") :: ModuleScript)
 local ChaseState = require(StatesFolder:WaitForChild("ChaseState") :: ModuleScript)
 local AttackState = require(StatesFolder:WaitForChild("AttackState") :: ModuleScript)
+local RetrieveState = require(StatesFolder:WaitForChild("RetrieveState") :: ModuleScript)
+local ReturnState = require(StatesFolder:WaitForChild("ReturnState") :: ModuleScript)
 
 local GuardAI = {}
 GuardAI.__index = GuardAI
@@ -102,6 +109,8 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 	local primaryPart = self.primaryPart
 	local startPos = primaryPart and primaryPart.Position or Vector3.zero
 
+	local useServerNetwork = if config and config.serverNetworkOwner ~= nil then config.serverNetworkOwner else true
+
 	self.context = {
 		model = model,
 		primaryPart = primaryPart,
@@ -111,12 +120,18 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 		moveSpeed = config and config.moveSpeed or model:GetAttribute("MoveSpeed") or 16,
 		attackRadius = config and config.attackRadius or 5.0,
 		attackRecoveryTime = config and config.attackRecoveryTime or 0.5,
+		displacementThreshold = config and config.displacementThreshold or 6.0,
+		serverNetworkOwner = useServerNetwork,
 		onAttackHit = config and config.onAttackHit,
+		onItemReached = config and config.onItemReached,
+		onReturnedToPost = config and config.onReturnedToPost,
+		targetItem = nil,
 		isPlayerOnPlatform = isPlayerOnPlatform,
 		platformPart = resolvedPlatform,
 		waypoints = waypointsList,
 		currentWaypointIndex = 1,
 		currentTargetHrp = nil,
+		lastPathTargetPos = nil,
 		lastTargetTime = 0,
 		patrolStartTime = os.clock(),
 		isAttacking = false,
@@ -128,6 +143,13 @@ end
 
 function GuardAI:init()
 	if not self.primaryPart then return end
+
+	-- Lock Server Network Ownership for Anti-Exploit Security (if enabled)
+	if self.context.serverNetworkOwner and self.primaryPart:IsA("BasePart") and RunService:IsServer() then
+		pcall(function()
+			self.primaryPart:SetNetworkOwner(nil)
+		end)
+	end
 
 	-- Touch listener for direct physical contact
 	self.touchConn = self.primaryPart.Touched:Connect(function(hit)
@@ -149,6 +171,8 @@ function GuardAI:init()
 	self.stateMachine:registerState(PatrolState)
 	self.stateMachine:registerState(ChaseState)
 	self.stateMachine:registerState(AttackState)
+	self.stateMachine:registerState(RetrieveState)
+	self.stateMachine:registerState(ReturnState)
 
 	-- Start FSM in Patrol State
 	self.stateMachine:setState("Patrol", self.context)
