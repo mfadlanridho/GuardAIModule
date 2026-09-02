@@ -16,8 +16,9 @@ end
 
 function ReturnState.enter(context: Types.GuardAIContext, fromState: string?)
 	context.humanoid.WalkSpeed = context.moveSpeed
-	if context.startPos then
-		context.humanoid:MoveTo(context.startPos)
+	local targetPos = (context.restPart and context.restPart.Position) or context.startPos
+	if targetPos then
+		context.humanoid:MoveTo(targetPos)
 	end
 end
 
@@ -26,13 +27,18 @@ function ReturnState.exit(context: Types.GuardAIContext, toState: string?)
 end
 
 function ReturnState.update(context: Types.GuardAIContext, dt: number, stateTime: number): string?
-	local targetPos = context.startPos
+	local targetPos = (context.restPart and context.restPart.Position) or context.startPos
 	if not targetPos then
 		return "Idle"
 	end
 
 	local dist = (context.primaryPart.Position - targetPos).Magnitude
 	if dist <= 4.0 then
+		-- Align orientation with rest spot if configured
+		if context.restCFrame and context.model then
+			context.model:PivotTo(context.restCFrame)
+		end
+
 		if typeof(context.onReturnedToPost) == "function" then
 			context.onReturnedToPost()
 		end

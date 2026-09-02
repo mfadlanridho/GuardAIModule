@@ -106,8 +106,20 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 		end
 	end
 
+	-- Resolve Rest Spot / Guard Post Part
+	local resolvedRestPart: BasePart? = config and config.restPart
+	if not resolvedRestPart then
+		local childSpot = model:FindFirstChild("RestSpot") or model:FindFirstChild("GuardSpot")
+		if childSpot and childSpot:IsA("BasePart") then
+			resolvedRestPart = childSpot
+		elseif childSpot and childSpot:IsA("ObjectValue") and childSpot.Value and childSpot.Value:IsA("BasePart") then
+			resolvedRestPart = childSpot.Value :: BasePart
+		end
+	end
+
 	local primaryPart = self.primaryPart
-	local startPos = primaryPart and primaryPart.Position or Vector3.zero
+	local startPos = if resolvedRestPart then resolvedRestPart.Position else (primaryPart and primaryPart.Position or Vector3.zero)
+	local restCFrame = if resolvedRestPart then resolvedRestPart.CFrame else (primaryPart and primaryPart.CFrame or nil)
 
 	local useServerNetwork = if config and config.serverNetworkOwner ~= nil then config.serverNetworkOwner else true
 
@@ -116,6 +128,8 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 		primaryPart = primaryPart,
 		humanoid = self.humanoid,
 		startPos = startPos,
+		restPart = resolvedRestPart,
+		restCFrame = restCFrame,
 		detectionRadius = config and config.detectionRadius or model:GetAttribute("DetectionRadius") or 40,
 		moveSpeed = config and config.moveSpeed or model:GetAttribute("MoveSpeed") or 16,
 		attackRadius = config and config.attackRadius or 5.0,
