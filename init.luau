@@ -123,10 +123,100 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 
 	local useServerNetwork = if config and config.serverNetworkOwner ~= nil then config.serverNetworkOwner else true
 
+	local locomotionMode: "Walk" | "Fly" = (config and config.locomotionMode) or model:GetAttribute("LocomotionMode") or "Walk"
+	local hoverAltitude = config and config.hoverAltitude or model:GetAttribute("HoverAltitude") or 3.5
+	local flightSpeed = config and config.flightSpeed or model:GetAttribute("FlightSpeed") or (config and config.moveSpeed) or model:GetAttribute("MoveSpeed") or 16
+	local turnResponsiveness = config and config.turnResponsiveness or 20
+
+	-- Resolve or create flight constraints if in Fly mode
+	local alignPos: AlignPosition? = nil
+	local alignOrient: AlignOrientation? = nil
+	if locomotionMode == "Fly" and primaryPart then
+		local rootAtt = primaryPart:FindFirstChild("RootAttachment") :: Attachment?
+		if not rootAtt then
+			rootAtt = Instance.new("Attachment")
+			rootAtt.Name = "RootAttachment"
+			rootAtt.Parent = primaryPart
+		end
+
+		alignPos = primaryPart:FindFirstChild("FlightAlignPosition") :: AlignPosition?
+		if not alignPos then
+			alignPos = Instance.new("AlignPosition")
+			alignPos.Name = "FlightAlignPosition"
+			alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
+			alignPos.Attachment0 = rootAtt
+			alignPos.MaxForce = 1000000
+			alignPos.MaxVelocity = flightSpeed
+			alignPos.Responsiveness = 15
+			alignPos.Position = primaryPart.Position
+			alignPos.Enabled = false
+			alignPos.Parent = primaryPart
+		end
+
+		alignOrient = primaryPart:FindFirstChild("FlightAlignOrientation") :: AlignOrientation?
+		if not alignOrient then
+			alignOrient = Instance.new("AlignOrientation")
+			alignOrient.Name = "FlightAlignOrientation"
+			alignOrient.Mode = Enum.OrientationAlignmentMode.OneAttachment
+			alignOrient.Attachment0 = rootAtt
+			alignOrient.MaxTorque = 1000000
+			alignOrient.Responsiveness = turnResponsiveness
+			alignOrient.CFrame = primaryPart.CFrame
+			alignOrient.Enabled = false
+			alignOrient.Parent = primaryPart
+		end
+	end
+
+	local setMoveTarget = function(targetPos: Vector3, lookAtPos: Vector3?, overrideSpeed: number?)
+		if locomotionMode == "Fly" then
+			if alignPos and alignOrient then
+				alignPos.Enabled = true
+				alignOrient.Enabled = true
+				self.humanoid.PlatformStand = true
+				alignPos.MaxVelocity = overrideSpeed or flightSpeed
+				alignPos.Position = targetPos
+				if lookAtPos and primaryPart then
+					local flatDir = Vector3.new(lookAtPos.X - primaryPart.Position.X, 0, lookAtPos.Z - primaryPart.Position.Z)
+					if flatDir.Magnitude > 0.1 then
+						alignOrient.CFrame = CFrame.lookAt(primaryPart.Position, primaryPart.Position + flatDir)
+					end
+				elseif primaryPart then
+					local moveDir = targetPos - primaryPart.Position
+					if moveDir.Magnitude > 0.1 then
+						alignOrient.CFrame = CFrame.lookAt(primaryPart.Position, primaryPart.Position + Vector3.new(moveDir.X, 0, moveDir.Z))
+					end
+				end
+			end
+		else
+			self.humanoid.WalkSpeed = overrideSpeed or (config and config.moveSpeed or 16)
+			self.humanoid:MoveTo(targetPos)
+		end
+	end
+
+	local stopMovement = function()
+		if locomotionMode == "Fly" then
+			if alignPos and primaryPart then
+				alignPos.Position = primaryPart.Position
+			end
+		else
+			if primaryPart then
+				self.humanoid:MoveTo(primaryPart.Position)
+			end
+		end
+	end
+
 	self.context = {
 		model = model,
 		primaryPart = primaryPart,
 		humanoid = self.humanoid,
+		locomotionMode = locomotionMode,
+		hoverAltitude = hoverAltitude,
+		flightSpeed = flightSpeed,
+		turnResponsiveness = turnResponsiveness,
+		alignPosition = alignPos,
+		alignOrientation = alignOrient,
+		setMoveTarget = setMoveTarget,
+		stopMovement = stopMovement,
 		startPos = startPos,
 		restPart = resolvedRestPart,
 		restCFrame = restCFrame,
@@ -134,7 +224,7 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 		moveSpeed = config and config.moveSpeed or model:GetAttribute("MoveSpeed") or 16,
 		attackRadius = config and config.attackRadius or 5.0,
 		attackRecoveryTime = config and config.attackRecoveryTime or 0.5,
-		displacementThreshold = config and config.displacementThreshold or 6.0,
+		displacementThreshold = config and config.displacementThreshold or model:GetAttribute("DisplacementThreshold") or 0.5,
 		serverNetworkOwner = useServerNetwork,
 		onAttackHit = config and config.onAttackHit,
 		onItemReached = config and config.onItemReached,
@@ -179,6 +269,9 @@ function GuardAI:init()
 	-- Initialize FSM StateMachine with generic states
 	self.stateMachine = StateMachine.new(function(oldState, newState)
 		log(string.format("[GuardAI] %s transitioned: %s -> %s", self.model.Name, tostring(oldState), tostring(newState)))
+		if newState and self.model and self.model.Parent then
+			self.model:SetAttribute("GuardState", newState)
+		end
 	end)
 
 	self.stateMachine:registerState(IdleState)

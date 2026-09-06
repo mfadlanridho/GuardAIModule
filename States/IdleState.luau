@@ -15,7 +15,9 @@ function IdleState.canEnter(context: any, fromState: string?): (boolean, string?
 end
 
 function IdleState.enter(context: any, fromState: string?)
-	if context.humanoid and context.primaryPart then
+	if context.stopMovement then
+		context.stopMovement()
+	elseif context.humanoid and context.primaryPart then
 		context.humanoid:MoveTo(context.primaryPart.Position)
 	end
 end

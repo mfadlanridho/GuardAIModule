@@ -18,7 +18,6 @@ function RetrieveState.canEnter(context: Types.GuardAIContext, fromState: string
 end
 
 function RetrieveState.enter(context: Types.GuardAIContext, fromState: string?)
-	context.humanoid.WalkSpeed = context.moveSpeed
 	local item = context.targetItem
 	if item then
 		local pos = if item:IsA("BasePart") then item.Position
@@ -26,13 +25,22 @@ function RetrieveState.enter(context: Types.GuardAIContext, fromState: string?)
 			else nil
 
 		if pos then
-			context.humanoid:MoveTo(pos)
+			if context.locomotionMode == "Fly" and context.setMoveTarget then
+				context.setMoveTarget(pos + Vector3.new(0, 1.0, 0), pos)
+			elseif context.setMoveTarget then
+				context.setMoveTarget(pos, nil)
+			else
+				context.humanoid.WalkSpeed = context.moveSpeed
+				context.humanoid:MoveTo(pos)
+			end
 		end
 	end
 end
 
 function RetrieveState.exit(context: Types.GuardAIContext, toState: string?)
-	-- Clean up move targets
+	if context.stopMovement then
+		context.stopMovement()
+	end
 end
 
 function RetrieveState.update(context: Types.GuardAIContext, dt: number, stateTime: number): string?
@@ -49,6 +57,10 @@ function RetrieveState.update(context: Types.GuardAIContext, dt: number, stateTi
 	if not targetPos then
 		context.targetItem = nil
 		return "Return"
+	end
+
+	if context.locomotionMode == "Fly" and context.setMoveTarget then
+		context.setMoveTarget(targetPos + Vector3.new(0, 1.0, 0), targetPos)
 	end
 
 	-- Distance Check

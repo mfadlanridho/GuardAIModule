@@ -5,6 +5,10 @@
 --]]
 
 export type GuardAIConfig = {
+	locomotionMode: ("Walk" | "Fly")?,
+	hoverAltitude: number?,
+	flightSpeed: number?,
+	turnResponsiveness: number?,
 	detectionRadius: number?,
 	moveSpeed: number?,
 	attackRadius: number?,
@@ -22,6 +26,14 @@ export type GuardAIContext = {
 	model: Model,
 	primaryPart: BasePart,
 	humanoid: Humanoid,
+	locomotionMode: "Walk" | "Fly",
+	hoverAltitude: number,
+	flightSpeed: number,
+	turnResponsiveness: number,
+	alignPosition: AlignPosition?,
+	alignOrientation: AlignOrientation?,
+	setMoveTarget: (targetPos: Vector3, lookAtPos: Vector3?, overrideSpeed: number?) -> (),
+	stopMovement: () -> (),
 	startPos: Vector3,
 	restPart: BasePart?,
 	restCFrame: CFrame?,

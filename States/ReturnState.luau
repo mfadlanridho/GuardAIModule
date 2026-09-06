@@ -15,15 +15,24 @@ function ReturnState.canEnter(context: Types.GuardAIContext, fromState: string?)
 end
 
 function ReturnState.enter(context: Types.GuardAIContext, fromState: string?)
-	context.humanoid.WalkSpeed = context.moveSpeed
 	local targetPos = (context.restPart and context.restPart.Position) or context.startPos
 	if targetPos then
-		context.humanoid:MoveTo(targetPos)
+		if context.locomotionMode == "Fly" and context.setMoveTarget then
+			local flyTarget = targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0)
+			context.setMoveTarget(flyTarget, targetPos)
+		elseif context.setMoveTarget then
+			context.setMoveTarget(targetPos, nil)
+		else
+			context.humanoid.WalkSpeed = context.moveSpeed
+			context.humanoid:MoveTo(targetPos)
+		end
 	end
 end
 
 function ReturnState.exit(context: Types.GuardAIContext, toState: string?)
-	-- Clean up targets
+	if context.stopMovement then
+		context.stopMovement()
+	end
 end
 
 function ReturnState.update(context: Types.GuardAIContext, dt: number, stateTime: number): string?
@@ -32,8 +41,17 @@ function ReturnState.update(context: Types.GuardAIContext, dt: number, stateTime
 		return "Idle"
 	end
 
+	if context.locomotionMode == "Fly" and context.setMoveTarget then
+		local flyTarget = targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0)
+		context.setMoveTarget(flyTarget, targetPos)
+	end
+
 	local dist = (context.primaryPart.Position - targetPos).Magnitude
 	if dist <= 4.0 then
+		if context.stopMovement then
+			context.stopMovement()
+		end
+
 		-- Align orientation with rest spot if configured
 		if context.restCFrame and context.model then
 			context.model:PivotTo(context.restCFrame)

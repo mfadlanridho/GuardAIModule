@@ -22,7 +22,10 @@ local AttackState = {
 			if primaryPart and targetHrp and targetHrp.Parent then
 				-- Attack Lunge forward towards target
 				local attackDir = (targetHrp.Position - primaryPart.Position).Unit
-				if context.humanoid then
+				if context.locomotionMode == "Fly" and context.setMoveTarget then
+					local diveSpeed = (context.flightSpeed or context.moveSpeed or 16) * 1.5
+					context.setMoveTarget(targetHrp.Position + Vector3.new(0, 1.0, 0), targetHrp.Position, diveSpeed)
+				elseif context.humanoid then
 					context.humanoid:MoveTo(primaryPart.Position + (attackDir * 3))
 				end
 

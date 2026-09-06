@@ -22,8 +22,10 @@ local ChaseState = {
 	end,
 
 	exit = function(context: any, toState: string?)
-		-- Instantly cancel active chase MoveTo navigation when exiting Chase state
-		if context.humanoid and context.primaryPart then
+		-- Instantly cancel active chase navigation when exiting Chase state
+		if context.stopMovement then
+			context.stopMovement()
+		elseif context.humanoid and context.primaryPart then
 			context.humanoid:MoveTo(context.primaryPart.Position)
 		end
 	end,
@@ -70,7 +72,7 @@ local ChaseState = {
 		if not context.lastMoveToTime or (now - context.lastMoveToTime) >= 0.15 then
 			context.lastMoveToTime = now
 
-			local threshold = context.displacementThreshold or 6.0
+			local threshold = context.displacementThreshold or 0.5
 			local targetPos = targetHrp.Position
 			local lastPos = context.lastPathTargetPos
 
@@ -78,7 +80,18 @@ local ChaseState = {
 
 			if displacement >= threshold then
 				context.lastPathTargetPos = targetPos
-				humanoid:MoveTo(targetPos)
+				if context.locomotionMode == "Fly" then
+					local flightPos = targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0)
+					if context.setMoveTarget then
+						context.setMoveTarget(flightPos, targetPos)
+					end
+				else
+					if context.setMoveTarget then
+						context.setMoveTarget(targetPos, nil)
+					else
+						humanoid:MoveTo(targetPos)
+					end
+				end
 			end
 		end
 
