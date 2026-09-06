@@ -119,7 +119,7 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 
 	local primaryPart = self.primaryPart
 	local startPos = if resolvedRestPart then resolvedRestPart.Position else (primaryPart and primaryPart.Position or Vector3.zero)
-	local restCFrame = if resolvedRestPart then resolvedRestPart.CFrame else (primaryPart and primaryPart.CFrame or nil)
+	local restCFrame = if config and config.restCFrame then config.restCFrame else (if resolvedRestPart then resolvedRestPart.CFrame else (primaryPart and primaryPart.CFrame or nil))
 
 	local useServerNetwork = if config and config.serverNetworkOwner ~= nil then config.serverNetworkOwner else true
 

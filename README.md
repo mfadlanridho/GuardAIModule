@@ -86,7 +86,7 @@ local guardInstance = GuardAI.new(workspace.FlyingBoss, {
              └──────────(Safe Zone / Loss)───────┘
 ```
 
-1. **IdleState**: Standby dormant state resting at spawn post.
+1. **IdleState**: Standby dormant state resting at spawn post. Automatically aligns orientation and position to canonical `restCFrame` when entered.
 2. **PatrolState**: Patrols between waypoint parts in a platform `Waypoints` folder.
 3. **ChaseState**: Pursues players (running along ground in Walk mode, gliding through air in Fly mode).
 4. **AttackState**: Lunges / dive-attacks forward, invokes `onAttackHit`, and applies recovery delay.

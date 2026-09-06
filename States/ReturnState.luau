@@ -15,10 +15,10 @@ function ReturnState.canEnter(context: Types.GuardAIContext, fromState: string?)
 end
 
 function ReturnState.enter(context: Types.GuardAIContext, fromState: string?)
-	local targetPos = (context.restPart and context.restPart.Position) or context.startPos
+	local targetPos = (context.restCFrame and context.restCFrame.Position) or (context.restPart and context.restPart.Position) or context.startPos
 	if targetPos then
 		if context.locomotionMode == "Fly" and context.setMoveTarget then
-			local flyTarget = targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0)
+			local flyTarget = (context.restCFrame and context.restCFrame.Position) or (targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0))
 			context.setMoveTarget(flyTarget, targetPos)
 		elseif context.setMoveTarget then
 			context.setMoveTarget(targetPos, nil)
@@ -36,25 +36,35 @@ function ReturnState.exit(context: Types.GuardAIContext, toState: string?)
 end
 
 function ReturnState.update(context: Types.GuardAIContext, dt: number, stateTime: number): string?
-	local targetPos = (context.restPart and context.restPart.Position) or context.startPos
+	local targetPos = (context.restCFrame and context.restCFrame.Position) or (context.restPart and context.restPart.Position) or context.startPos
 	if not targetPos then
 		return "Idle"
 	end
 
+	local dist = (context.primaryPart.Position - targetPos).Magnitude
+
 	if context.locomotionMode == "Fly" and context.setMoveTarget then
-		local flyTarget = targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0)
-		context.setMoveTarget(flyTarget, targetPos)
+		local flyTarget = (context.restCFrame and context.restCFrame.Position) or (targetPos + Vector3.new(0, context.hoverAltitude or 3.5, 0))
+		-- On final approach (< 12 studs), steer orientation towards resting CFrame
+		local lookTarget = targetPos
+		if dist < 12.0 and context.restCFrame then
+			lookTarget = context.primaryPart.Position + context.restCFrame.LookVector
+		end
+		context.setMoveTarget(flyTarget, lookTarget)
 	end
 
-	local dist = (context.primaryPart.Position - targetPos).Magnitude
 	if dist <= 4.0 then
 		if context.stopMovement then
 			context.stopMovement()
 		end
 
-		-- Align orientation with rest spot if configured
-		if context.restCFrame and context.model then
-			context.model:PivotTo(context.restCFrame)
+		-- Cleanly snap to canonical resting CFrame
+		if context.restCFrame then
+			if context.primaryPart then
+				context.primaryPart.CFrame = context.restCFrame
+			elseif context.model then
+				context.model:PivotTo(context.restCFrame)
+			end
 		end
 
 		if typeof(context.onReturnedToPost) == "function" then

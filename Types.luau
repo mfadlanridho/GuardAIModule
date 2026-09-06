@@ -17,6 +17,7 @@ export type GuardAIConfig = {
 	serverNetworkOwner: boolean?,
 	platformPart: BasePart?,
 	restPart: BasePart?,
+	restCFrame: CFrame?,
 	onAttackHit: ((victimModel: Model) -> ())?,
 	onItemReached: ((targetItem: Instance) -> ())?,
 	onReturnedToPost: (() -> ())?,

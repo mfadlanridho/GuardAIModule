@@ -20,6 +20,22 @@ function IdleState.enter(context: any, fromState: string?)
 	elseif context.humanoid and context.primaryPart then
 		context.humanoid:MoveTo(context.primaryPart.Position)
 	end
+
+	-- Reorient and lock to canonical resting CFrame inside the submodule
+	if context.restCFrame then
+		if context.primaryPart then
+			context.primaryPart.CFrame = context.restCFrame
+		elseif context.model then
+			context.model:PivotTo(context.restCFrame)
+		end
+
+		if context.alignOrientation and context.alignOrientation.Parent then
+			context.alignOrientation.CFrame = context.restCFrame
+		end
+		if context.alignPosition and context.alignPosition.Parent then
+			context.alignPosition.Position = context.restCFrame.Position
+		end
+	end
 end
 
 function IdleState.exit(context: any, toState: string?)
