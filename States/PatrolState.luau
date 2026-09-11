@@ -26,6 +26,11 @@ local PatrolState = {
 	end,
 
 	update = function(context: any): string?
+		-- Check if engaged in combat duel with a companion
+		if context.model and context.model:GetAttribute("InCombatDuel") then
+			return "Combat"
+		end
+
 		local primaryPart = context.primaryPart
 		local humanoid = context.humanoid
 		if not primaryPart or not humanoid then return nil end

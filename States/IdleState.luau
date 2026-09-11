@@ -42,6 +42,11 @@ function IdleState.exit(context: any, toState: string?)
 end
 
 function IdleState.update(context: any): string?
+	-- Check if engaged in combat duel with a companion
+	if context.model and context.model:GetAttribute("InCombatDuel") then
+		return "Combat"
+	end
+
 	if context.isDormant then
 		return nil
 	end

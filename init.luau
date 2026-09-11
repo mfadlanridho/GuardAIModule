@@ -37,6 +37,7 @@ local IdleState = require(StatesFolder:WaitForChild("IdleState") :: ModuleScript
 local PatrolState = require(StatesFolder:WaitForChild("PatrolState") :: ModuleScript)
 local ChaseState = require(StatesFolder:WaitForChild("ChaseState") :: ModuleScript)
 local AttackState = require(StatesFolder:WaitForChild("AttackState") :: ModuleScript)
+local CombatState = require(StatesFolder:WaitForChild("CombatState") :: ModuleScript)
 local RetrieveState = require(StatesFolder:WaitForChild("RetrieveState") :: ModuleScript)
 local ReturnState = require(StatesFolder:WaitForChild("ReturnState") :: ModuleScript)
 
@@ -278,6 +279,7 @@ function GuardAI:init()
 	self.stateMachine:registerState(PatrolState)
 	self.stateMachine:registerState(ChaseState)
 	self.stateMachine:registerState(AttackState)
+	self.stateMachine:registerState(CombatState)
 	self.stateMachine:registerState(RetrieveState)
 	self.stateMachine:registerState(ReturnState)
 
