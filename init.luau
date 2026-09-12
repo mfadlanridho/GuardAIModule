@@ -40,6 +40,7 @@ local AttackState = require(StatesFolder:WaitForChild("AttackState") :: ModuleSc
 local CombatState = require(StatesFolder:WaitForChild("CombatState") :: ModuleScript)
 local RetrieveState = require(StatesFolder:WaitForChild("RetrieveState") :: ModuleScript)
 local ReturnState = require(StatesFolder:WaitForChild("ReturnState") :: ModuleScript)
+local KnockedOutState = require(StatesFolder:WaitForChild("KnockedOutState") :: ModuleScript)
 
 local GuardAI = {}
 GuardAI.__index = GuardAI
@@ -282,6 +283,7 @@ function GuardAI:init()
 	self.stateMachine:registerState(CombatState)
 	self.stateMachine:registerState(RetrieveState)
 	self.stateMachine:registerState(ReturnState)
+	self.stateMachine:registerState(KnockedOutState)
 
 	-- Start FSM in Patrol State
 	self.stateMachine:setState("Patrol", self.context)
