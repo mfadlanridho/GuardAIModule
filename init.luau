@@ -45,7 +45,7 @@ local KnockedOutState = require(StatesFolder:WaitForChild("KnockedOutState") :: 
 local GuardAI = {}
 GuardAI.__index = GuardAI
 
--- Strict Spatial Footprint Check: Exact physical bounds of platform floor
+-- Strict Spatial Footprint Check: Exact physical bounds of platform floor (supports boxes and cylinders)
 local function isPlayerOnPlatform(player: Player, platform: BasePart?): boolean
 	if not platform then return true end
 	local char = player.Character
@@ -54,6 +54,15 @@ local function isPlayerOnPlatform(player: Player, platform: BasePart?): boolean
 
 	local relPos = platform.CFrame:PointToObjectSpace(hrp.Position)
 	local halfSize = platform.Size * 0.5
+
+	-- Native Cylinder Support (Roblox Cylinder axis is along local X, circular cross section in local Y/Z)
+	if platform:IsA("Part") and platform.Shape == Enum.PartType.Cylinder then
+		local radius = math.min(halfSize.Y, halfSize.Z)
+		local distFromAxis = Vector2.new(relPos.Y, relPos.Z).Magnitude
+		local alongAxis = math.abs(relPos.X)
+		return distFromAxis <= (radius + 2) and alongAxis <= (halfSize.X + 25)
+	end
+
 	return math.abs(relPos.X) <= halfSize.X 
 	   and math.abs(relPos.Z) <= halfSize.Z 
 	   and relPos.Y >= -4 and relPos.Y <= halfSize.Y + 15
