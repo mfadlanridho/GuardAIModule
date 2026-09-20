@@ -70,6 +70,7 @@ local guardInstance = GuardAI.new(workspace.FlyingBoss, {
 | `onAttackHit` | `(Model) -> ()` | `nil` | Callback invoked when attack lunge lands. |
 | `onItemReached` | `(Instance) -> ()` | `nil` | Callback invoked when reaching a dropped item in `RetrieveState`. |
 | `onReturnedToPost` | `() -> ()` | `nil` | Callback invoked when returning to rest post in `ReturnState`. |
+| `enableTouchDamage` | `boolean` | `false` | When true, connects physical `Touched` listener to damage players on direct contact. |
 
 ---
 

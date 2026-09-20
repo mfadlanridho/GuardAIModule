@@ -87,6 +87,7 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 
 	self.primaryPart = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
 	self.isDestroyed = false
+	self.touchConn = nil
 
 	-- Resolve Platform Part
 	local resolvedPlatform: BasePart? = config and config.platformPart
@@ -250,6 +251,7 @@ function GuardAI.new(model: Model, config: GuardAIConfig?): GuardAIInstance
 		lastTargetTime = 0,
 		patrolStartTime = os.clock(),
 		isAttacking = false,
+		enableTouchDamage = if config and config.enableTouchDamage ~= nil then config.enableTouchDamage else (model:GetAttribute("EnableTouchDamage") == true),
 	}
 
 	self:init()
@@ -266,16 +268,18 @@ function GuardAI:init()
 		end)
 	end
 
-	-- Touch listener for direct physical contact
-	self.touchConn = self.primaryPart.Touched:Connect(function(hit)
-		local character = hit.Parent
-		if not character then return end
-		local player = Players:GetPlayerFromCharacter(character)
-		if player and self.context.onAttackHit then
-			log(string.format("[GuardAI] %s physical touch hit on player %s!", self.model.Name, player.Name))
-			self.context.onAttackHit(character)
-		end
-	end)
+	-- Optional touch listener for direct physical contact (disabled by default)
+	if self.context.enableTouchDamage then
+		self.touchConn = self.primaryPart.Touched:Connect(function(hit)
+			local character = hit.Parent
+			if not character then return end
+			local player = Players:GetPlayerFromCharacter(character)
+			if player and self.context.onAttackHit then
+				log(string.format("[GuardAI] %s physical touch hit on player %s!", self.model.Name, player.Name))
+				self.context.onAttackHit(character)
+			end
+		end)
+	end
 
 	-- Initialize FSM StateMachine with generic states
 	self.stateMachine = StateMachine.new(function(oldState, newState)

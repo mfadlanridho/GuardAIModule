@@ -21,6 +21,7 @@ export type GuardAIConfig = {
 	onAttackHit: ((victimModel: Model) -> ())?,
 	onItemReached: ((targetItem: Instance) -> ())?,
 	onReturnedToPost: (() -> ())?,
+	enableTouchDamage: boolean?,
 }
 
 export type GuardAIContext = {
@@ -59,6 +60,7 @@ export type GuardAIContext = {
 	isAttacking: boolean,
 	deltaTime: number?,
 	isDormant: boolean?,
+	enableTouchDamage: boolean,
 }
 
 export type GuardAIInstance = {
