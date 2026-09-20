@@ -7,6 +7,8 @@
 	- Restores 100% HP upon recovery and transitions back to "Return".
 --]]
 
+local Workspace = game:GetService("Workspace")
+
 local KNOCKOUT_DURATION = 15.0
 
 local KnockedOutState = {
@@ -40,6 +42,24 @@ local KnockedOutState = {
 		if primaryPart and primaryPart:IsA("BasePart") then
 			primaryPart.AssemblyLinearVelocity = Vector3.zero
 			primaryPart.AssemblyAngularVelocity = Vector3.zero
+
+			-- Ground raycast: Snap guardian to ground level instead of letting non-collidable parts fall through the map
+			local rayParams = RaycastParams.new()
+			rayParams.FilterType = Enum.RaycastFilterType.Exclude
+			rayParams.FilterDescendantsInstances = { model }
+
+			local rayOrigin = primaryPart.Position + Vector3.new(0, 2, 0)
+			local rayResult = Workspace:Raycast(rayOrigin, Vector3.new(0, -100, 0), rayParams)
+
+			if rayResult then
+				local hipHeight = (context.humanoid and context.humanoid.HipHeight > 0 and context.humanoid.HipHeight) or 2.0
+				local halfHeight = primaryPart.Size.Y * 0.5
+				local groundY = rayResult.Position.Y + hipHeight + halfHeight
+				primaryPart.CFrame = CFrame.new(primaryPart.Position.X, groundY, primaryPart.Position.Z) * primaryPart.CFrame.Rotation
+			end
+
+			-- Anchor primary part so the rig stays firmly planted during knockout
+			primaryPart.Anchored = true
 		end
 
 		if context.humanoid then
@@ -59,16 +79,25 @@ local KnockedOutState = {
 		model:SetAttribute("GuardState", "KnockedOut")
 		model:SetAttribute("InCombatDuel", false)
 		model:SetAttribute("Health", 0)
-		model:SetAttribute("KnockoutEndTime", game:GetService("Workspace"):GetServerTimeNow() + KNOCKOUT_DURATION)
+		model:SetAttribute("KnockoutEndTime", Workspace:GetServerTimeNow() + KNOCKOUT_DURATION)
 
 		print(string.format("💫 [GuardAI] %s was KNOCKED OUT! Resting for %.1fs...", model.Name, KNOCKOUT_DURATION))
 	end,
 
 	exit = function(context: any, toState: string?)
 		local model = context.model
+		local primaryPart = context.primaryPart or model.PrimaryPart
+
 		model:SetAttribute("KnockoutEndTime", nil)
 		if context.humanoid then
 			context.humanoid.PlatformStand = false
+		end
+
+		-- Unanchor primary part to restore flight/locomotion physics
+		if primaryPart and primaryPart:IsA("BasePart") then
+			primaryPart.Anchored = false
+			primaryPart.AssemblyLinearVelocity = Vector3.zero
+			primaryPart.AssemblyAngularVelocity = Vector3.zero
 		end
 
 		-- Re-enable flight constraints if in Fly mode
@@ -98,6 +127,16 @@ local KnockedOutState = {
 		local elapsed = os.clock() - startTime
 
 		if elapsed >= KNOCKOUT_DURATION then
+			if typeof(context.checkActiveThreat) == "function" then
+				local threatState, targetObj = context.checkActiveThreat()
+				if threatState == "Retrieve" and targetObj then
+					context.targetItem = targetObj
+					return "Retrieve"
+				elseif threatState == "Chase" and targetObj then
+					context.currentTargetHrp = targetObj
+					return "Chase"
+				end
+			end
 			return "Return"
 		end
 

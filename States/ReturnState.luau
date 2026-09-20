@@ -70,6 +70,18 @@ function ReturnState.update(context: Types.GuardAIContext, dt: number, stateTime
 		if typeof(context.onReturnedToPost) == "function" then
 			context.onReturnedToPost()
 		end
+
+		if typeof(context.checkActiveThreat) == "function" then
+			local threatState, targetObj = context.checkActiveThreat()
+			if threatState == "Retrieve" and targetObj then
+				context.targetItem = targetObj
+				return "Retrieve"
+			elseif threatState == "Chase" and targetObj then
+				context.currentTargetHrp = targetObj
+				return "Chase"
+			end
+		end
+
 		return "Idle"
 	end
 
